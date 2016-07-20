@@ -3,7 +3,7 @@ extends layout
 block content
   h2 Models
   :markdown
-    [Models](./api.html#model-js) are fancy constructors compiled from our `Schema` definitions. Instances of these models represent [documents](./documents.html) which can be saved and retreived from our database. All document creation and retreival from the database is handled by these models.
+    [Models](./api.html#model-js) are fancy constructors compiled from our `Schema` definitions. Instances of these models represent [documents](./documents.html) which can be saved and retrieved from our database. All document creation and retrieval from the database is handled by these models.
 
   h3 Compiling your first model
   :js
@@ -34,9 +34,17 @@ block content
       // saved!
     })
   :markdown
-    Note that no tanks will be created/removed until the connection your model uses is open. In this case we are using `mongoose.model()` so let's open the default mongoose connection:
+    Note that no tanks will be created/removed until the connection your model
+    uses is open. Every model has an associated connection. When you use
+    `mongoose.model()`, your model will use the default mongoose connection.
   :js
     mongoose.connect('localhost', 'gettingstarted');
+  :markdown
+    If you create a custom connection, use that connection's `model()` function
+    instead.
+  :js
+    var connection = mongoose.createConnection('mongodb://localhost:27017/test');
+    var Tank = connection.model('Tank', yourSchema);
 
   h3 Querying
   :markdown

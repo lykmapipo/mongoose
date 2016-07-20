@@ -3,60 +3,49 @@
  * Test dependencies.
  */
 
-var start = require('./common')
-  , assert = require('assert')
-  , mongoose = start.mongoose
-  , random = require('../lib/utils').random
-  , Query = require('../lib/query')
-  , Schema = mongoose.Schema
-  , SchemaType = mongoose.SchemaType
-  , ObjectId = Schema.Types.ObjectId
-  , DocumentObjectId = mongoose.Types.ObjectId
-  , DocumentArray = mongoose.Types.DocumentArray
-  , EmbeddedDocument = mongoose.Types.Embedded
-  , MongooseArray = mongoose.Types.Array
-  , MongooseError = mongoose.Error;
+var start = require('./common'),
+    assert = require('power-assert'),
+    mongoose = start.mongoose,
+    Schema = mongoose.Schema;
 
-describe('model middleware', function(){
-  it('post save', function(done){
+describe('model middleware', function() {
+  it('post save', function(done) {
     var schema = new Schema({
-        title: String
+      title: String
     });
 
     var called = 0;
 
-    schema.post('save', function (obj) {
+    schema.post('save', function(obj) {
       assert.equal(obj.title, 'Little Green Running Hood');
       assert.equal(this.title, 'Little Green Running Hood');
-      assert.equal(1, called);
+      assert.equal(called, 0);
       called++;
     });
 
-    schema.post('save', function (obj) {
+    schema.post('save', function(obj) {
       assert.equal(obj.title, 'Little Green Running Hood');
       assert.equal(this.title, 'Little Green Running Hood');
-      assert.equal(2, called);
+      assert.equal(called, 1);
       called++;
     });
 
-    schema.post('save', function(obj, next){
-      setTimeout(function(){
-        assert.equal(obj.title, 'Little Green Running Hood');
-        assert.equal(0, called);
-        called++;
-        next();
-      }, 0);
+    schema.post('save', function(obj, next) {
+      assert.equal(obj.title, 'Little Green Running Hood');
+      assert.equal(called, 2);
+      called++;
+      next();
     });
 
-    var db = start()
-      , TestMiddleware = db.model('TestPostSaveMiddleware', schema);
+    var db = start(),
+        TestMiddleware = db.model('TestPostSaveMiddleware', schema);
 
-    var test = new TestMiddleware({ title: 'Little Green Running Hood'});
+    var test = new TestMiddleware({title: 'Little Green Running Hood'});
 
-    test.save(function(err){
+    test.save(function(err) {
       assert.ifError(err);
-      assert.equal(test.title,'Little Green Running Hood');
-      assert.equal(3, called);
+      assert.equal(test.title, 'Little Green Running Hood');
+      assert.equal(called, 3);
       db.close();
       done();
     });
@@ -69,106 +58,106 @@ describe('model middleware', function(){
     var count = 0;
 
     schema.pre('validate', function(next) {
-      assert.equal(0, count++);
+      assert.equal(count++, 0);
       next();
     });
 
     schema.pre('save', function(next) {
-      assert.equal(1, count++);
+      assert.equal(count++, 1);
       next();
     });
 
     var db = start();
     var Book = db.model('gh2462', schema);
 
-    Book.create({}, function(err) {
+    Book.create({}, function() {
       assert.equal(count, 2);
       db.close(done);
     });
   });
 
-  it('works', function(done){
+  it('works', function(done) {
     var schema = new Schema({
-        title: String
+      title: String
     });
 
     var called = 0;
 
-    schema.pre('init', function (next) {
+    schema.pre('init', function(next) {
       called++;
       next();
     });
 
-    schema.pre('save', function (next) {
+    schema.pre('save', function(next) {
       called++;
       next(new Error('Error 101'));
     });
 
-    schema.pre('remove', function (next) {
+    schema.pre('remove', function(next) {
       called++;
       next();
     });
 
     mongoose.model('TestMiddleware', schema);
 
-    var db = start()
-      , TestMiddleware = db.model('TestMiddleware');
+    var db = start(),
+        TestMiddleware = db.model('TestMiddleware');
 
     var test = new TestMiddleware();
 
     test.init({
-        title: 'Test'
+      title: 'Test'
     });
 
-    assert.equal(1, called);
+    assert.equal(called, 1);
 
-    test.save(function(err){
+    test.save(function(err) {
       assert.ok(err instanceof Error);
-      assert.equal(err.message,'Error 101');
-      assert.equal(2, called);
+      assert.equal(err.message, 'Error 101');
+      assert.equal(called, 2);
 
-      test.remove(function(err){
+      test.remove(function(err) {
         db.close();
         assert.ifError(err);
-        assert.equal(3, called);
+        assert.equal(called, 3);
         done();
       });
     });
   });
 
-  it('post init', function(done){
+  it('post init', function(done) {
     var schema = new Schema({
-        title: String
+      title: String
     });
 
-    var preinit = 0
-      , postinit = 0
+    var preinit = 0,
+        postinit = 0;
 
-    schema.pre('init', function (next) {
+    schema.pre('init', function(next) {
       ++preinit;
       next();
     });
 
-    schema.post('init', function (doc) {
+    schema.post('init', function(doc) {
       assert.ok(doc instanceof mongoose.Document);
       ++postinit;
     });
 
     mongoose.model('TestPostInitMiddleware', schema);
 
-    var db = start()
-      , Test = db.model('TestPostInitMiddleware');
+    var db = start(),
+        Test = db.model('TestPostInitMiddleware');
 
-    var test = new Test({ title: "banana" });
+    var test = new Test({title: 'banana'});
 
-    test.save(function(err){
+    test.save(function(err) {
       assert.ifError(err);
 
-      Test.findById(test._id, function (err, test) {
+      Test.findById(test._id, function(err, test) {
         assert.ifError(err);
-        assert.equal(1, preinit);
-        assert.equal(1, postinit);
-        test.remove(function(err){
+        assert.equal(preinit, 1);
+        assert.equal(postinit, 1);
+        test.remove(function() {
           db.close();
           done();
         });
@@ -178,7 +167,7 @@ describe('model middleware', function(){
 
   it('gh-1829', function(done) {
     var childSchema = new mongoose.Schema({
-      name: String,
+      name: String
     });
 
     var childPreCalls = 0;
@@ -194,7 +183,7 @@ describe('model middleware', function(){
 
     var parentSchema = new mongoose.Schema({
       name: String,
-      children: [childSchema],
+      children: [childSchema]
     });
 
     parentSchema.pre('save', function(next) {
@@ -208,82 +197,83 @@ describe('model middleware', function(){
     var parent = new Parent({
       name: 'Han',
       children: [
-        { name: 'Jaina' },
-        { name: 'Jacen' }
+        {name: 'Jaina'},
+        {name: 'Jacen'}
       ]
     });
 
     parent.save(function(error) {
       assert.ifError(error);
-      assert.equal(2, childPreCalls);
-      assert.equal(1, childPreCallsByName['Jaina']);
-      assert.equal(1, childPreCallsByName['Jacen']);
-      assert.equal(1, parentPreCalls);
+      assert.equal(childPreCalls, 2);
+      assert.equal(childPreCallsByName.Jaina, 1);
+      assert.equal(childPreCallsByName.Jacen, 1);
+      assert.equal(parentPreCalls, 1);
       parent.children[0].name = 'Anakin';
       parent.save(function(error) {
         assert.ifError(error);
-        assert.equal(4, childPreCalls);
-        assert.equal(1, childPreCallsByName['Anakin']);
-        assert.equal(1, childPreCallsByName['Jaina']);
-        assert.equal(2, childPreCallsByName['Jacen']);
+        assert.equal(childPreCalls, 4);
+        assert.equal(childPreCallsByName.Anakin, 1);
+        assert.equal(childPreCallsByName.Jaina, 1);
+        assert.equal(childPreCallsByName.Jacen, 2);
 
-        assert.equal(2, parentPreCalls);
+        assert.equal(parentPreCalls, 2);
         db.close();
         done();
       });
     });
   });
 
-  it('validate + remove', function(done){
+  it('validate + remove', function(done) {
     var schema = new Schema({
-        title: String
+      title: String
     });
 
-    var preValidate = 0
-      , postValidate = 0
-      , preRemove = 0
-      , postRemove = 0
+    var preValidate = 0,
+        postValidate = 0,
+        preRemove = 0,
+        postRemove = 0;
 
-    schema.pre('validate', function (next) {
+    schema.pre('validate', function(next) {
       ++preValidate;
       next();
     });
 
-    schema.pre('remove', function (next) {
+    schema.pre('remove', function(next) {
       ++preRemove;
       next();
     });
 
-    schema.post('validate', function (doc) {
+    schema.post('validate', function(doc) {
       assert.ok(doc instanceof mongoose.Document);
       ++postValidate;
     });
 
-    schema.post('remove', function (doc) {
+    schema.post('remove', function(doc) {
       assert.ok(doc instanceof mongoose.Document);
       ++postRemove;
     });
 
-    var db = start()
-      , Test = db.model('TestPostValidateMiddleware', schema);
+    var db = start(),
+        Test = db.model('TestPostValidateMiddleware', schema);
 
-    var test = new Test({ title: "banana" });
+    var test = new Test({title: 'banana'});
 
-    test.save(function(err){
+    test.save(function(err) {
       assert.ifError(err);
-      assert.equal(1, preValidate);
-      assert.equal(1, postValidate);
-      assert.equal(0, preRemove);
-      assert.equal(0, postRemove);
-      test.remove(function (err) {
+      assert.equal(preValidate, 1);
+      assert.equal(postValidate, 1);
+      assert.equal(preRemove, 0);
+      assert.equal(postRemove, 0);
+      test.remove(function(err) {
         db.close();
         assert.ifError(err);
-        assert.equal(1, preValidate);
-        assert.equal(1, postValidate);
-        assert.equal(1, preRemove);
-        assert.equal(1, postRemove);
+        assert.equal(preValidate, 1);
+        assert.equal(postValidate, 1);
+        assert.equal(preRemove, 1);
+        assert.equal(postRemove, 1);
         done();
-      })
+      });
     });
-  })
+  });
 });
+
